@@ -1,9 +1,6 @@
 ﻿namespace RubbleAutoloader;
 
-/// <summary>
-/// <inheritdoc cref="ModTile"/><para/>
-/// Can be renamed externally by using <see cref="ChangeName"/>.
-/// </summary>
+/// <inheritdoc cref="ModTile"/>
 public abstract class NameableTile : ModTile
 {
     /// <summary> The type name. </summary>

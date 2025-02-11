@@ -30,11 +30,15 @@ public interface IAutoloadRubble
         public readonly int[] Styles => styles ?? [0];
 	}
 
-	public enum RubbleSize : byte
+    /// <summary> Size settings according to <see cref="FlexibleTileWand"/> rubble placement. </summary>
+    public enum RubbleSize : byte
 	{
+        /// <summary><see cref="FlexibleTileWand.RubblePlacementSmall"/></summary>
         Small = 0,
-		Medium = 1,
-		Large = 2
+        /// <summary><see cref="FlexibleTileWand.RubblePlacementMedium"/></summary>
+        Medium = 1,
+        /// <summary><see cref="FlexibleTileWand.RubblePlacementLarge"/></summary>
+        Large = 2
 	}
 
     /// <summary> <see cref="RubbleData"/> belonging to this rubble type. </summary>
@@ -118,7 +122,7 @@ internal class RubbleGlobalTile : GlobalTile
 
 	public override void KillTile(int i, int j, int type, ref bool fail, ref bool effectOnly, ref bool noItem)
 	{
-		if (Main.netMode != NetmodeID.MultiplayerClient && Autoloader.IsRubble(type) && TileObjectData.IsTopLeft(i, j))
+		if (!fail && Main.netMode != NetmodeID.MultiplayerClient && Autoloader.IsRubble(type) && TileObjectData.IsTopLeft(i, j))
 		{
 			var data = ((IAutoloadRubble)TileLoader.GetTile(type)).Data;
 			var objData = TileObjectData.GetTileData(type, 0);
