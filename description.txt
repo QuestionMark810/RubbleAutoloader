@@ -1,1 +1,1 @@
-Used autoload rubble tiles for your mod. Not intended for direct use; extract the .dll file for reference instead.
+Used to autoload rubble tiles for your mod. Not intended for direct use; extract the .dll file for reference instead.

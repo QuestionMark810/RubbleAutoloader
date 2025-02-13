@@ -1,20 +1,21 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Terraria.DataStructures;
 using Terraria.GameContent;
 using Terraria.ObjectData;
 
 namespace RubbleAutoloader;
 
-/// <summary> Autoloads a rubble variant for this tile. Class access must be public for autoloading to work.<br/>
+/// <summary> Autoloads a rubble variant for this tile. This class must be public for autoloading to work.<br/>
 /// Rubbles are stored by type and can be checked using <see cref="Autoloader.IsRubble"/>. </summary>
 public interface IAutoloadRubble
 {
-	/// <summary> Data used to define rubble tiles. </summary>
-	/// <param name="item"> The item drop. </param>
-	/// <param name="size"> The size (small/medium/large). </param>
-	/// <param name="styles"> The tile styles to use. </param>
-	public struct RubbleData(int item, RubbleSize size, int[] styles = null)
+    /// <summary> Data used to define rubble tiles. </summary>
+    /// <param name="item"> The item drop. </param>
+    /// <param name="size"> The size (small/medium/large). </param>
+    /// <param name="styles"> The tile styles to use. null will automatically interpret styles from <see cref="TileObjectData.RandomStyleRange"/>. </param>
+    public struct RubbleData(int item, RubbleSize size, int[] styles = null)
 	{
         /// <summary> The item drop. </summary>
         public int item = item;
@@ -22,10 +23,8 @@ public interface IAutoloadRubble
         /// <summary> The size (small/medium/large). </summary>
         public RubbleSize size = size;
 
-		private readonly int[] styles = styles;
-
         /// <summary> The tile styles to use. </summary>
-        public readonly int[] Styles => styles ?? [0];
+        public int[] styles = styles;
 	}
 
     /// <summary> Size settings according to <see cref="FlexibleTileWand"/> rubble placement. </summary>
@@ -60,35 +59,55 @@ internal class RubbleSystem : ModSystem
         {
             if (Autoloads(content[i].GetType()))
             {
-				var instance = (ModTile)ClassBuilder.CreateDynamic(content[i], content[i].Name + "Rubble", out _);
+				var instance = (ModTile)TileTypeBuilder.CreateDynamic(content[i], (content[i].GetType().Namespace + "." + content[i].Name).Replace(".", "/"), content[i].Texture, out _);
 
-                mod.AddContent(instance);
-                mod.Logger.Info($"[RubbleAutoloader] Added rubble: {instance.Name} ({instance.Type})");
-
-                RubbleTypes.Add(instance.Type);
+                int type = (int)typeof(TileLoader).GetField("nextTile", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null); //Important that this is placed before AddContent increments the value
+                if (mod.AddContent(instance))
+				{
+                    mod.Logger.Info($"[RubbleAutoloader] Added rubble: {instance.Name} ({type})");
+                    RubbleTypes.Add(type);
+                }
             }
         }
     }
+
 
 	public override void PostSetupContent()
 	{
 		foreach (int type in RubbleTypes)
 		{
-			var data = ((IAutoloadRubble)TileLoader.GetTile(type)).Data;
-			var objData = TileObjectData.GetTileData(type, 0);
-
-			if (objData != null)
-				objData.RandomStyleRange = 0;
+			int[] styles = ReadStyle(type, out var data);
 
 			TileID.Sets.CanDropFromRightClick[type] = false;
 
 			if (data.size == IAutoloadRubble.RubbleSize.Small)
-				FlexibleTileWand.RubblePlacementSmall.AddVariations(data.item, type, data.Styles);
+				FlexibleTileWand.RubblePlacementSmall.AddVariations(data.item, type, styles);
 			else if (data.size == IAutoloadRubble.RubbleSize.Medium)
-				FlexibleTileWand.RubblePlacementMedium.AddVariations(data.item, type, data.Styles);
+				FlexibleTileWand.RubblePlacementMedium.AddVariations(data.item, type, styles);
 			else if (data.size == IAutoloadRubble.RubbleSize.Large)
-				FlexibleTileWand.RubblePlacementLarge.AddVariations(data.item, type, data.Styles);
+				FlexibleTileWand.RubblePlacementLarge.AddVariations(data.item, type, styles);
 		}
+
+		static int[] ReadStyle(int type, out IAutoloadRubble.RubbleData data)
+		{
+            data = ((IAutoloadRubble)TileLoader.GetTile(type)).Data;
+
+			if (data.styles is not null)
+				return data.styles;
+
+            var objData = TileObjectData.GetTileData(type, 0);
+
+			if (objData is null)
+				return [0];
+
+			int[] styles = [Math.Min(objData.RandomStyleRange, 1)];
+            objData.RandomStyleRange = 0;
+
+            for (int i = 0; i < styles.Length; i++)
+				styles[i] = i;
+
+			return styles;
+        }
 	}
 }
 
