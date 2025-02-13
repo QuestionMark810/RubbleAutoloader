@@ -1,14 +1,12 @@
-﻿using MonoMod.RuntimeDetour;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Terraria.DataStructures;
 using Terraria.GameContent;
 using Terraria.ObjectData;
 
 namespace RubbleAutoloader;
 
-/// <summary> Autoloads a rubble variant for this tile. Must be <see cref="NameableTile"/> for autoloading to work.<br/>
+/// <summary> Autoloads a rubble variant for this tile. Class access must be public for autoloading to work.<br/>
 /// Rubbles are stored by type and can be checked using <see cref="Autoloader.IsRubble"/>. </summary>
 public interface IAutoloadRubble
 {
@@ -49,43 +47,28 @@ internal class RubbleSystem : ModSystem
 {
 	internal delegate bool orig_AddContent(Mod self, ILoadable instance);
 
-	private static Hook CustomHook = null;
-	internal static readonly HashSet<int> RubbleTypes = [];
+    internal static readonly HashSet<int> RubbleTypes = [];
 
 	private static bool Autoloads(Type type) => typeof(IAutoloadRubble).IsAssignableFrom(type);
 
 	/// <summary> Initializes rubble autoloading. Must be called during loading and after all other content has been loaded. </summary>
 	internal static void Initialize(Mod mod)
 	{
-		AddHook(mod);
-		var content = mod.GetContent<NameableTile>().ToArray();
+        var content = mod.GetContent<ModTile>().ToArray();
 
-		for (int i = 0; i < content.Length; i++)
-		{
-			if (Autoloads(content[i].GetType()))
-			{
-				var instance = (NameableTile)Activator.CreateInstance(content[i].GetType());
+        for (int i = 0; i < content.Length; i++)
+        {
+            if (Autoloads(content[i].GetType()))
+            {
+				var instance = (ModTile)ClassBuilder.CreateDynamic(content[i], content[i].Name + "Rubble", out _);
 
-				mod.AddContent(instance);
-				RubbleTypes.Add(instance.Type);
-			}
-		}
-	}
+                mod.AddContent(instance);
+                mod.Logger.Info($"[RubbleAutoloader] Added rubble: {instance.Name} ({instance.Type})");
 
-	private static void AddHook(Mod mod)
-	{
-		MethodInfo info = mod.GetType().GetMethod("AddContent", BindingFlags.Instance | BindingFlags.Public, [typeof(ILoadable)]);
-		CustomHook = new Hook(info, HookAddContent, true);
-	}
-
-	/// <summary> Changes <see cref="NameableTile"/> names right before being added to content. </summary>
-	private static bool HookAddContent(orig_AddContent orig, Mod self, ILoadable instance)
-	{
-		if (instance is NameableTile nameable && Autoloads(instance.GetType()))
-			nameable.ChangeName(nameable.BaseName + "Rubble");
-
-		return orig(self, instance);
-	}
+                RubbleTypes.Add(instance.Type);
+            }
+        }
+    }
 
 	public override void PostSetupContent()
 	{
@@ -106,12 +89,6 @@ internal class RubbleSystem : ModSystem
 			else if (data.size == IAutoloadRubble.RubbleSize.Large)
 				FlexibleTileWand.RubblePlacementLarge.AddVariations(data.item, type, data.Styles);
 		}
-	}
-
-	public override void Unload()
-	{
-		CustomHook?.Undo();
-		CustomHook = null;
 	}
 }
 
