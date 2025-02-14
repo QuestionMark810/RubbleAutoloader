@@ -54,21 +54,26 @@ internal class RubbleSystem : ModSystem
 	internal static void Initialize(Mod mod)
 	{
         var content = mod.GetContent<ModTile>().ToArray();
+		string fullLog = string.Empty;
 
         for (int i = 0; i < content.Length; i++)
         {
             if (Autoloads(content[i].GetType()))
             {
-				var instance = (ModTile)TileTypeBuilder.CreateDynamic(content[i], (content[i].GetType().Namespace + "." + content[i].Name).Replace(".", "/"), content[i].Texture, out _);
+				var instance = (ModTile)TileTypeBuilder.CreateDynamic(content[i], content[i].Name, content[i].Texture, out _);
 
                 int type = (int)typeof(TileLoader).GetField("nextTile", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null); //Important that this is placed before AddContent increments the value
                 if (mod.AddContent(instance))
 				{
-                    mod.Logger.Info($"[RubbleAutoloader] Added rubble: {instance.Name} ({type})");
                     RubbleTypes.Add(type);
+
+                    fullLog += instance.Name + $" ({type}), ";
                 }
             }
         }
+
+		if (fullLog != string.Empty)
+			mod.Logger.Info("[RubbleAutoloader] Added rubbles: " + fullLog.Remove(fullLog.Length - 2, 2)); //Remove ", " suffix
     }
 
 

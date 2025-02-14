@@ -3,6 +3,7 @@ global using Microsoft.Xna.Framework;
 global using Terraria;
 global using Terraria.ID;
 global using Terraria.ModLoader;
+using System.Linq;
 
 namespace RubbleAutoloader;
 
@@ -18,7 +19,13 @@ public class Autoloader : Mod
     {
         RubbleSystem.Initialize(mod);
 
-        mod.AddContent<RubbleSystem>();
-        mod.AddContent<RubbleGlobalTile>();
+        TryAdd<RubbleSystem>(mod);
+        TryAdd<RubbleGlobalTile>(mod);
+    }
+
+    private static void TryAdd<T>(Mod mod) where T : ILoadable, new()
+    {
+        if (!ModContent.GetContent<T>().Any())
+            mod.AddContent<T>();
     }
 }
