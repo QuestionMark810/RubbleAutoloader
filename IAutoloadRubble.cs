@@ -105,8 +105,8 @@ internal class RubbleSystem : ModSystem
 			if (objData is null)
 				return [0];
 
-			int[] styles = [Math.Min(objData.RandomStyleRange, 1)];
-            objData.RandomStyleRange = 0;
+			int[] styles = new int[Math.Max(objData.RandomStyleRange, 1)];
+            TileObjectData.GetTileData(type, 0).RandomStyleRange = 0;
 
             for (int i = 0; i < styles.Length; i++)
 				styles[i] = i;
